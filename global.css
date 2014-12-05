@@ -1,0 +1,15 @@
+.wc-szamlazz-message {
+	overflow: auto;
+	max-height: 100px;
+}
+
+.type-shop_order .column-order_actions a.button.wc_szamlazz {
+	float: left;
+	width: 26px;
+	height: 26px;
+	padding: 3px 2px;
+}
+
+.type-shop_order .column-order_actions a.button.wc_szamlazz img {
+	width: 16px;
+}
