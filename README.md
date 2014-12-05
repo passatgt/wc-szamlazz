@@ -14,7 +14,7 @@ Funkciók:
 * Fizetési határidő és megjegyzés írható a számlákhoz
 
 Telepítés:
-* Töltsd le a bővítményt
+* Töltsd le a bővítményt:  https://github.com/passatgt/wc-szamlazz/archive/master.zip
 * Wordpress-ben bővítmények / új hozzáadása menüben fel kell tölteni
 * WooCommerce / Beállítások / Fizetés alján megjelennek a Számlázz.hu beállítások, ezeket be kell állítani
 * Működik(ha minden jól megy)
