@@ -53,7 +53,11 @@ class WC_Szamlazz {
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
 
-    	add_filter( 'woocommerce_get_settings_checkout', array( $this, 'szamlazz_settings' ), 20, 1 );
+		if ( defined( 'WOOCOMMERCE_VERSION' ) && version_compare( WOOCOMMERCE_VERSION, '2.2', '>=' ) ) {
+    		add_filter( 'woocommerce_get_settings_checkout', array( $this, 'szamlazz_settings' ), 20, 1 );			
+		} else {
+    		add_filter( 'woocommerce_general_settings', array( $this, 'szamlazz_settings' ), 20, 1 );
+		}
 		add_action( 'add_meta_boxes', array( $this, 'wc_szamlazz_add_metabox' ) );
 
         add_action( 'wp_ajax_wc_szamlazz_generate_invoice', array( $this, 'generate_invoice_with_ajax' ) ); 
