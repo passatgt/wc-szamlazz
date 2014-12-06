@@ -4,7 +4,7 @@ Plugin Name: WooCommerce Szamlazz.hu
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.1
+Version: 1.0.2
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
@@ -48,7 +48,7 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.1'; 
+		self::$version = '1.0.2'; 
 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
@@ -153,7 +153,7 @@ class WC_Szamlazz {
 		<?php else: ?>
 		
 			<div id="wc-szamlazz-messages"></div>			
-			<?php if(!$this->is_invoice_generated($post->ID)): ?>
+			<?php if($this->is_invoice_generated($post->ID)): ?>
 				<div style="text-align:center;">
 					<p><?php echo __('Számla sikeresen létrehozva és elküldve a vásárlónak emailben.','wc-szamlazz'); ?></p>
 					<p><?php _e('A számla sorszáma:','wc-szamlazz'); ?> <strong><?php echo get_post_meta($post->ID,'_wc_szamlazz',true); ?></strong></p>
