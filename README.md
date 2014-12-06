@@ -4,6 +4,11 @@ WooCommerce Szamlazz.hu
 Számlázz.hu összeköttetés Woocommerce-hez.
 
 -----------------------
+Changelog:
+* v1.0.2 - Manuális számlakészítés javítása(ha már automatikusan létrejött a számla, letölteni nehet, nem újat csinálni)
+* v1.0.1 - WooCommerce 2.2 előtti verzióknál a beállítások megjelennek az Általános fülön(csak 2.2 óta lehet a pénztár oldalra rakni extra beállítást)
+
+-----------------------
 Funkciók:
 * Manuális számlakészítés - minden rendelésnél a jobb oldalon megjelenik egy új gomb, rákattintáskor elküldi az adatokat számlázz.hu-nak és legenerálja a számlát.
 * Autoamta számlakészítés - Ha a rendelés állapota átállítódik befejezettre, automatán legenerálja a számlát
