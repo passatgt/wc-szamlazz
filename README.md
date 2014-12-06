@@ -1,7 +1,7 @@
 WooCommerce Szamlazz.hu
 ===========
 
-Számlázz.hu összeköttetés Woocommerce-hez.
+Számlázz.hu összeköttetés WooCommerce-hez.
 
 -----------------------
 Changelog:
@@ -11,7 +11,7 @@ Changelog:
 -----------------------
 Funkciók:
 * Manuális számlakészítés - minden rendelésnél a jobb oldalon megjelenik egy új gomb, rákattintáskor elküldi az adatokat számlázz.hu-nak és legenerálja a számlát.
-* Autoamta számlakészítés - Ha a rendelés állapota átállítódik befejezettre, automatán legenerálja a számlát
+* Automata számlakészítés - Ha a rendelés állapota átállítódik befejezettre, automatán legenerálja a számlát
 * Számlaértesítő - A számlákat a szamlazz.hu rendszere automatikusan elküldi emailben a vásárlónak(az email szövege a szamlazz.hu-ra belépve szerkeszthető), a szamlazz.hu-n belépve látható mikor lett elküldve és mikor lett elolvasva
 * Papír és elektronikus számlát is lehet csinálni
 * A generált számlát letölti saját weboldalra is, egy véletlenszerű fájlnéven tárolja a wp-content/uploads/wc_szamlazz mappában, így csak az tudja letölteni, aki ismeri a fájlnevet:)
@@ -29,3 +29,5 @@ Telepítés:
 
 Gyik:
 * A számlázz.hu-tól lehet kérni kapcsolat űrlapon keresztül, hogy állítsák át a fiókot Teszt üzemmódba, így lehet próbálgatni a számlakészítést
+
+FONTOS: Felelősséget én nem vállalok a készített számlákért, mindenki ellenőrizze le saját magának, hogy minden jól működik e. Sajnos minden esetet nem tudok tesztelni, különböző áfakulcsok, termékvariációk, kuponok stb..., így mindenkéne tesztelje le éles használat előtt, ha valami gond van, jelezze felém és megpróbálom javítani.
