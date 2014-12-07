@@ -4,7 +4,7 @@ Plugin Name: WooCommerce Szamlazz.hu
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.2
+Version: 1.0.3
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
@@ -48,20 +48,22 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.2'; 
+		self::$version = '1.0.3'; 
 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
 
-		if ( defined( 'WOOCOMMERCE_VERSION' ) && version_compare( WOOCOMMERCE_VERSION, '2.2', '>=' ) ) {
-    		add_filter( 'woocommerce_get_settings_checkout', array( $this, 'szamlazz_settings' ), 20, 1 );			
-		} else {
-    		add_filter( 'woocommerce_general_settings', array( $this, 'szamlazz_settings' ), 20, 1 );
-		}
+    	add_filter( 'woocommerce_general_settings', array( $this, 'szamlazz_settings' ), 20, 1 );
 		add_action( 'add_meta_boxes', array( $this, 'wc_szamlazz_add_metabox' ) );
 
         add_action( 'wp_ajax_wc_szamlazz_generate_invoice', array( $this, 'generate_invoice_with_ajax' ) ); 
         add_action( 'wp_ajax_nopriv_wc_szamlazz_generate_invoice', array( $this, 'generate_invoice_with_ajax' ) );
+
+        add_action( 'wp_ajax_wc_szamlazz_already', array( $this, 'wc_szamlazz_already' ) ); 
+        add_action( 'wp_ajax_nopriv_wc_szamlazz_already', array( $this, 'wc_szamlazz_already' ) );
+
+        add_action( 'wp_ajax_wc_szamlazz_already_back', array( $this, 'wc_szamlazz_already_back' ) ); 
+        add_action( 'wp_ajax_nopriv_wc_szamlazz_already_back', array( $this, 'wc_szamlazz_already_back' ) );
 
 		add_action( 'woocommerce_order_status_completed', array( $this, 'on_order_complete' ) );
 
@@ -147,21 +149,37 @@ class WC_Szamlazz {
 	//Render metabox content
 	public function render_meta_box_content($post) {
 		?>
-		
+			
 		<?php if(!get_option('wc_szamlazz_username') || !get_option('wc_szamlazz_password')): ?>
 			<p style="text-align: center;"><?php _e('A számlakészítéshez meg kell adnod a számlázz.hu felhasználóneved és jelszavad a Woocommerce beállításokban!','wc-szamlazz'); ?></p>
-		<?php else: ?>
-		
+		<?php else: ?>		
 			<div id="wc-szamlazz-messages"></div>			
-			<?php if($this->is_invoice_generated($post->ID)): ?>
+			<?php if(get_post_meta($post->ID,'_wc_szamlazz_own',true)): ?>
+				<div style="text-align:center;" id="szamlazz_already_div">
+					<?php $note = get_post_meta($post->ID,'_wc_szamlazz_own',true); ?>
+					<p><?php _e('A számlakészítés ki lett kapcsolva, mert: ','wc-szamlazz'); ?><strong><?php echo $note; ?></strong><br>
+					<a id="wc_szamlazz_already_back" href="#" data-nonce="<?php echo wp_create_nonce( "wc_already_invoice" ); ?>" data-order="<?php echo $post->ID; ?>"><?php _e('Visszakapcsolás','wc-szamlazz'); ?></a>
+					</p>
+				</div>	
+			<?php endif; ?>	
+			<?php if($this->is_invoice_generated($post->ID) && !get_post_meta($post->ID,'_wc_szamlazz_own',true)): ?>
 				<div style="text-align:center;">
 					<p><?php echo __('Számla sikeresen létrehozva és elküldve a vásárlónak emailben.','wc-szamlazz'); ?></p>
 					<p><?php _e('A számla sorszáma:','wc-szamlazz'); ?> <strong><?php echo get_post_meta($post->ID,'_wc_szamlazz',true); ?></strong></p>
 					<p><a href="<?php echo $this->generate_download_link($post->ID); ?>" id="wc_szamlazz_download" data-nonce="<?php echo wp_create_nonce( "wc_generate_invoice" ); ?>" class="button button-primary" target="_blank"><?php _e('Számla megtekintése','wc-szamlazz'); ?></a></p>
 				</div>
 			<?php else: ?>
-				<div style="text-align:center;" id="wc-szamlazz-generate-button">
-					<p><a href="#" id="wc_szamlazz_generate" data-order="<?php echo $post->ID; ?>" data-nonce="<?php echo wp_create_nonce( "wc_generate_invoice" ); ?>" class="button button-primary" target="_blank"><?php _e('Számlakészítés','wc-szamlazz'); ?></a></p>
+				<div style="text-align:center;<?php if(get_post_meta($post->ID,'_wc_szamlazz_own',true)): ?>display:none;<?php endif; ?>" id="wc-szamlazz-generate-button">
+					<p><a href="#" id="wc_szamlazz_generate" data-order="<?php echo $post->ID; ?>" data-nonce="<?php echo wp_create_nonce( "wc_generate_invoice" ); ?>" class="button button-primary" target="_blank"><?php _e('Számlakészítés','wc-szamlazz'); ?></a><br><a href="#" id="wc_szamlazz_options"><?php _e('Opciók','wc-szamlazz'); ?></a></p>
+					<div id="wc_szamlazz_options_form" style="display:none;">
+						<div class="fields">
+						<h4><?php _e('Megjegyzés','wc-szamlazz'); ?></h4>
+						<input type="text" id="wc_szamlazz_invoice_note" value="<?php echo get_option('wc_szamlazz_note'); ?>" />
+						<h4><?php _e('Fizetési határidő(nap)','wc-szamlazz'); ?></h4>
+						<input type="text" id="wc_szamlazz_invoice_deadline" value="<?php echo get_option('wc_szamlazz_payment_deadline'); ?>" />
+						</div>
+						<a id="wc_szamlazz_already" href="#" data-nonce="<?php echo wp_create_nonce( "wc_already_invoice" ); ?>" data-order="<?php echo $post->ID; ?>"><?php _e('Számlakészítés kikapcsolása','wc-szamlazz'); ?></a>
+					</div>
 					<?php if(get_option('wc_szamlazz_auto') == 'yes'): ?>
 					<p><small><?php _e('A számla automatikusan elkészül és el lesz küldve a vásárlónak, ha a rendelés állapota befejezettre lesz átállítva.','wc-szamlazz'); ?></small></p>
 					<?php endif; ?>
@@ -192,6 +210,15 @@ class WC_Szamlazz {
 		//Build Xml
 		$szamla = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><xmlszamla xmlns="http://www.szamlazz.hu/xmlszamla" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.szamlazz.hu/xmlszamla xmlszamla.xsd"></xmlszamla>');
 		
+		//If custom details
+		if(isset($_POST['note']) && isset($_POST['deadline'])) {
+			$note = $_POST['note'];
+			$deadline = $_POST['deadline'];
+		} else {
+			$note = get_option('wc_szamlazz_note');
+			$deadline = get_option('wc_szamlazz_payment_deadline');			
+		}
+		
 		//Account & Invoice settings
 		$beallitasok = $szamla->addChild('beallitasok');
 		$beallitasok->addChild('felhasznalo', get_option('wc_szamlazz_username'));
@@ -205,11 +232,15 @@ class WC_Szamlazz {
 		$fejlec = $szamla->addChild('fejlec');
 		$fejlec->addChild('keltDatum', date('Y-m-d') );
 		$fejlec->addChild('teljesitesDatum', date('Y-m-d') );
-		$fejlec->addChild('fizetesiHataridoDatum', date('Y-m-d', strtotime('+'.get_option('wc_szamlazz_payment_deadline').' days')));
+		if($deadline) {
+			$fejlec->addChild('fizetesiHataridoDatum', date('Y-m-d', strtotime('+'.$deadline.' days')));
+		} else {
+			$fejlec->addChild('fizetesiHataridoDatum', date('Y-m-d'));
+		}
 		$fejlec->addChild('fizmod',$order->payment_method_title);
 		$fejlec->addChild('penznem',$order->get_order_currency());
 		$fejlec->addChild('szamlaNyelve', 'hu');
-		$fejlec->addChild('megjegyzes', get_option('wc_szamlazz_note'));
+		$fejlec->addChild('megjegyzes', $note);
 		$fejlec->addChild('rendelesSzam', $orderId);
 		$fejlec->addChild('elolegszamla', 'false');
 		$fejlec->addChild('vegszamla', 'false');
@@ -257,7 +288,11 @@ class WC_Szamlazz {
 			$tetel->addChild('mennyiseg','1');
 			$tetel->addChild('mennyisegiEgyseg','');
 			$tetel->addChild('nettoEgysegar',round($order->order_shipping));
-			$tetel->addChild('afakulcs',round((round($order->order_shipping_tax)/round($order->order_shipping))*100));
+			if($order->order_shipping == 0) {
+				$tetel->addChild('afakulcs','0');	
+			} else {
+				$tetel->addChild('afakulcs',round((round($order->order_shipping_tax)/round($order->order_shipping))*100));				
+			}
 			$tetel->addChild('nettoErtek',round($order->order_shipping));
 			$tetel->addChild('afaErtek',round($order->order_shipping_tax));
 			$tetel->addChild('bruttoErtek',round($order->order_shipping)+round($order->order_shipping_tax));
@@ -464,7 +499,8 @@ class WC_Szamlazz {
 	//Check if it was already generated or not
 	public function is_invoice_generated( $order_id ) {
 		$invoice_name = get_post_meta($order_id,'_wc_szamlazz',true);
-		if($invoice_name) {
+		$invoice_own = get_post_meta($order_id,'_wc_szamlazz_own',true);
+		if($invoice_name || $invoice_own) {
 			return true;
 		} else {
 			return false;
@@ -504,7 +540,48 @@ class WC_Szamlazz {
 			$available[$available_gateway->id] = $available_gateway->title;
 		}
 		return $available;
+	}	
+	
+	//If the invoice is already generated without the plugin
+	public function wc_szamlazz_already() {
+        check_ajax_referer( 'wc_already_invoice', 'nonce' );
+        if( true ) {
+			if ( !current_user_can( 'edit_shop_order' ) )  {
+				wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
+			}			
+        	$orderid = $_POST['order'];
+			$note = $_POST['note'];
+			update_post_meta( $orderid, '_wc_szamlazz_own', $note );
+			
+			$response = array();
+			$response['error'] = false;
+			$response['messages'][] = __('Saját számla sikeresen hozzáadva.','wc-szamlazz');
+			$response['invoice_name'] = $note;
+			
+			wp_send_json_success($response);
+        }
+            	
 	}		
+	
+	//If the invoice is already generated without the plugin, turn it off
+	public function wc_szamlazz_already_back() {
+        check_ajax_referer( 'wc_already_invoice', 'nonce' );
+        if( true ) {
+			if ( !current_user_can( 'edit_shop_order' ) )  {
+				wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
+			}			
+        	$orderid = $_POST['order'];
+			$note = $_POST['note'];
+			update_post_meta( $orderid, '_wc_szamlazz_own', '' );
+			
+			$response = array();
+			$response['error'] = false;
+			$response['messages'][] = __('Visszakapcsolás sikeres.','wc-szamlazz');
+			
+			wp_send_json_success($response);
+        }
+            	
+	}	
 }
 
 $GLOBALS['wc_szamlazz'] = new WC_Szamlazz();

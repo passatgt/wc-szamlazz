@@ -13,3 +13,28 @@
 .type-shop_order .column-order_actions a.button.wc_szamlazz img {
 	width: 16px;
 }
+
+#wc_szamlazz_already {
+	color: #a00;
+}
+
+#wc_szamlazz_options_form {
+	border-top: 1px solid #ddd;
+	margin: 0 -12px;
+}
+
+#wc_szamlazz_options_form .fields {
+	padding: 10px;
+	border-bottom: 1px solid #ddd;	
+	text-align: left;
+	margin: 0 0 5px 0;
+}
+
+#wc_szamlazz_options_form h4 {
+	margin: 0 0 5px 0;
+}
+
+#wc_szamlazz_options_form input {
+	width: 100%;
+	margin: 0 0 5px 0;
+}
