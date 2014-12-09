@@ -4,7 +4,7 @@ Plugin Name: WooCommerce Szamlazz.hu
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.3
+Version: 1.0.4
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
@@ -48,7 +48,7 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.3'; 
+		self::$version = '1.0.4'; 
 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
@@ -131,6 +131,13 @@ class WC_Szamlazz {
 			'id'       => 'wc_szamlazz_auto',
 			'type'     => 'checkbox',
 			'desc'     => __( 'Ha be van kapcsolva, akkor a rendelés lezárásakor automatán kiállításra kerül a számla és a szamlazz.hu elküldi a vásárló emailcímére.', 'wc-szamlazz' ),
+		);
+
+		$settings[] = array(
+			'title'    => __( 'Fejlesztői mód', 'wc-szamlazz' ),
+			'id'       => 'wc_szamlazz_debug',
+			'type'     => 'checkbox',
+			'desc'     => __( 'Ha be van kapcsolva, akkor a szamlazz.hu részére generált XML fájl nem lesz letörölve, teszteléshez használatos opció. Az XML fájlok a wp-content/uploads/wc_szamlazz/ mappában vannak, fájlnév a rendelés száma.', 'wc-szamlazz' ),
 		);
 
 		$settings[] =  array( 'type' => 'sectionend', 'id' => 'woocommerce_szamlazz_options');
@@ -273,10 +280,10 @@ class WC_Szamlazz {
 			$tetel->addChild('megnevezes',$termek["name"]);
 			$tetel->addChild('mennyiseg',$termek["qty"]);
 			$tetel->addChild('mennyisegiEgyseg','');
-			$tetel->addChild('nettoEgysegar',round($termek["line_subtotal"])/$termek["qty"]);
-			$tetel->addChild('afakulcs',round((round($termek["line_subtotal_tax"])/round($termek["line_subtotal"]))*100));
+			$tetel->addChild('nettoEgysegar',round($termek["line_total"])/$termek["qty"]);
+			$tetel->addChild('afakulcs',round((round($termek["line_tax"])/round($termek["line_total"]))*100));
 			$tetel->addChild('nettoErtek',round($termek["line_total"]));
-			$tetel->addChild('afaErtek',round($termek["line_subtotal_tax"]));
+			$tetel->addChild('afaErtek',round($termek["line_tax"]));
 			$tetel->addChild('bruttoErtek',round($termek["line_total"])+round($termek["line_tax"]));
 			$tetel->addChild('megjegyzes','');
 		}
@@ -314,7 +321,8 @@ class WC_Szamlazz {
 		}
 
 		//Generate XML
-		$xml = $szamla->asXML();
+		$xml_szamla = apply_filters('wc_szamlazz_xml',$szamla);
+		$xml = $xml_szamla->asXML();
 		
 		//Temporarily save XML
 		$UploadDir = wp_upload_dir();
@@ -429,8 +437,10 @@ class WC_Szamlazz {
 			return $response;
 		}
 		
-		//Delete the XML
-		unlink($xmlfile);
+		//Delete the XML if not debug mode
+		if(!get_option('wc_szamlazz_debug')) {
+			unlink($xmlfile);
+		}
 			
 		if ($volt_hiba) {
 			$response['error'] = true;
