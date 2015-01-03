@@ -5,6 +5,7 @@ Számlázz.hu összeköttetés WooCommerce-hez.
 
 -----------------------
 Changelog:
+* v1.0.5 - Papíralapú számlakészítés javítva
 * v1.0.4 - Termékár számítás javítva kuponok alkalmazása esetén, wc_szamlazz_xml nevű filterrel módosítható az xml fájl generálás előtt és egy opció, hogy ne törölje le az XML fájlt számlakészítéskor, így könnyebben lehet tesztelni, ha valami gond van.
 * v1.0.3 - 0 Ft-os szállításnál nincs PHP Warning. Lehetőség arra, hogy egyes rendeléseknél ki legyen kapcsolva a számlakészítés egyedi indokkal. Lehetőség arra, hogy manuális számlakészítésnél a főbeállításoktól eltérő fizetési határidőt és megjegyzést lehessen írni. Ha nincs megadva a főbeállításokban a fizetési határidő, nem 1970-et fog beírni a számlára:)
 * v1.0.2 - Manuális számlakészítés javítása(ha már automatikusan létrejött a számla, letölteni nehet, nem újat csinálni)
