@@ -4,7 +4,7 @@ Plugin Name: WooCommerce Szamlazz.hu
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.5
+Version: 1.0.6
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
@@ -48,7 +48,7 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.5'; 
+		self::$version = '1.0.6'; 
 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
@@ -306,6 +306,23 @@ class WC_Szamlazz {
 			$tetel->addChild('afaErtek',round($order->order_shipping_tax));
 			$tetel->addChild('bruttoErtek',round($order->order_shipping)+round($order->order_shipping_tax));
 			$tetel->addChild('megjegyzes','');
+		}
+		
+		//Extra Fees
+		$fees = $order->get_fees();
+		if(!empty($fees)) {
+			foreach( $fees as $fee ) {  
+				$tetel = $tetelek->addChild('tetel');
+				$tetel->addChild('megnevezes',$fee["name"]);
+				$tetel->addChild('mennyiseg',1);
+				$tetel->addChild('mennyisegiEgyseg','');
+				$tetel->addChild('nettoEgysegar',round($fee["line_total"]));
+				$tetel->addChild('afakulcs',round((round($fee["line_tax"])/round($fee["line_total"]))*100));
+				$tetel->addChild('nettoErtek',round($fee["line_total"]));
+				$tetel->addChild('afaErtek',round($fee["line_tax"]));
+				$tetel->addChild('bruttoErtek',round($fee["line_total"])+round($fee["line_tax"]));
+				$tetel->addChild('megjegyzes','');
+			}			
 		}
 		
 		//Discount
