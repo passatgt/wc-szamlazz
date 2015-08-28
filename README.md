@@ -44,5 +44,43 @@ Telepítés:
 
 Gyik:
 * A számlázz.hu-tól lehet kérni kapcsolat űrlapon keresztül, hogy állítsák át a fiókot Teszt üzemmódba, így lehet próbálgatni a számlakészítést
+* A számlaértesítő teszt módban nem a vásárló emailcímére érkezik, hanem a számlázz.hu-n használt fiók emailcímére.
 
 FONTOS: Felelősséget én nem vállalok a készített számlákért, mindenki ellenőrizze le saját magának, hogy minden jól működik e. Sajnos minden esetet nem tudok tesztelni, különböző áfakulcsok, termékvariációk, kuponok stb..., így mindenkéne tesztelje le éles használat előtt, ha valami gond van, jelezze felém és megpróbálom javítani.
+
+Filter minta:
+
+A wc_szamlazz_xml filterrel módosítható a szamlazz.hu felé küldött adat, itt egy minta, hogyan. Az alábbi kód lekéri az átváltási arány az openexchangerates.org-ról(ingyenesen regisztrálható, és a kapott APP ID-t írd be az XXXX... helyére), majd az euró árfolyamot ráírja a számlára, illetve MNB-t beírja banknak. Utána a város után beleírja az országot is, illetve a mejegyzést is kiegészíti.
+
+```php
+//Change szamlazz.hu language attribute automatically
+add_filter('wc_szamlazz_xml','wc_szamlazz_xml_lang');
+function wc_szamlazz_xml_lang($xml,$order) {
+	$app_id = 'XXXXXXXXXXXXXXXXXXXXX';
+	$exchange_rate = get_transient( 'wc_szamlazz_currency_rate' );
+	if(!$exchange_rate) {
+		$exchange_rate = wp_remote_retrieve_body( wp_remote_get( 'http://openexchangerates.org/api/latest.json?app_id=' . $app_id ) );
+		set_transient( 'wc_szamlazz_currency_rate', $exchange_rate, 60*60*12 );
+	}
+
+	$exchange_rate = json_decode( $exchange_rate );
+	$huf_rate = $exchange_rate->rates->HUF;
+	$eur_rate = $exchange_rate->rates->EUR;
+	
+	//Átváltási arány (alap pénzem USD)
+	$eur = $huf_rate / $eur_rate;
+
+    //Árfolyam beállítása
+	$xml->fejlec->arfolyam = $eur;
+	$xml->fejlec->szamlaNyelve = 'en';
+	$xml->fejlec->arfolyamBank = 'MNB';
+	
+	//Ország a település után (nincs külön mező ennek szamlazz.hu API-ban)
+	$xml->vevo->telepules = $xml->vevo->telepules.', '.WC()->countries->countries[ $order->billing_country ];
+		
+	//Megjegyzés kiegészítés
+	$xml->fejlec->megjegyzes .= ' - EU Community sales/The customer is liable to pay VAT';
+		
+	return $xml;
+}
+```
