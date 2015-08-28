@@ -4,10 +4,11 @@ Plugin Name: WooCommerce Szamlazz.hu
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.6
+Version: 1.0.12
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
 
 //Generate stuff on plugin activation
 function wc_szamlazz_activate() {
@@ -48,8 +49,7 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.6'; 
-
+		self::$version = '1.0.12'; 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
 
@@ -159,7 +159,7 @@ class WC_Szamlazz {
 			
 		<?php if(!get_option('wc_szamlazz_username') || !get_option('wc_szamlazz_password')): ?>
 			<p style="text-align: center;"><?php _e('A számlakészítéshez meg kell adnod a számlázz.hu felhasználóneved és jelszavad a Woocommerce beállításokban!','wc-szamlazz'); ?></p>
-		<?php else: ?>		
+		<?php else: ?>		
 			<div id="wc-szamlazz-messages"></div>			
 			<?php if(get_post_meta($post->ID,'_wc_szamlazz_own',true)): ?>
 				<div style="text-align:center;" id="szamlazz_already_div">
@@ -177,24 +177,27 @@ class WC_Szamlazz {
 				</div>
 			<?php else: ?>
 				<div style="text-align:center;<?php if(get_post_meta($post->ID,'_wc_szamlazz_own',true)): ?>display:none;<?php endif; ?>" id="wc-szamlazz-generate-button">
-					<p><a href="#" id="wc_szamlazz_generate" data-order="<?php echo $post->ID; ?>" data-nonce="<?php echo wp_create_nonce( "wc_generate_invoice" ); ?>" class="button button-primary" target="_blank"><?php _e('Számlakészítés','wc-szamlazz'); ?></a><br><a href="#" id="wc_szamlazz_options"><?php _e('Opciók','wc-szamlazz'); ?></a></p>
+					<p><a href="#" id="wc_szamlazz_generate" data-order="<?php echo $post->ID; ?>" data-nonce="<?php echo wp_create_nonce( "wc_generate_invoice" ); ?>" class="button button-primary" target="_blank"><?php _e('Számlakészítés','wc-szamlazz'); ?></a><br><a href="#" id="wc_szamlazz_options"><?php _e('Opciók','wc-szamlazz'); ?></a></p>
 					<div id="wc_szamlazz_options_form" style="display:none;">
 						<div class="fields">
 						<h4><?php _e('Megjegyzés','wc-szamlazz'); ?></h4>
 						<input type="text" id="wc_szamlazz_invoice_note" value="<?php echo get_option('wc_szamlazz_note'); ?>" />
 						<h4><?php _e('Fizetési határidő(nap)','wc-szamlazz'); ?></h4>
 						<input type="text" id="wc_szamlazz_invoice_deadline" value="<?php echo get_option('wc_szamlazz_payment_deadline'); ?>" />
+						<h4><?php _e('Teljesítés dátum','wc-szamlazz'); ?></h4>
+						<input type="text" class="date-picker" id="wc_szamlazz_invoice_completed" maxlength="10" value="<?php echo date('Y-m-d'); ?>" pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])">
 						</div>
 						<a id="wc_szamlazz_already" href="#" data-nonce="<?php echo wp_create_nonce( "wc_already_invoice" ); ?>" data-order="<?php echo $post->ID; ?>"><?php _e('Számlakészítés kikapcsolása','wc-szamlazz'); ?></a>
 					</div>
 					<?php if(get_option('wc_szamlazz_auto') == 'yes'): ?>
 					<p><small><?php _e('A számla automatikusan elkészül és el lesz küldve a vásárlónak, ha a rendelés állapota befejezettre lesz átállítva.','wc-szamlazz'); ?></small></p>
-					<?php endif; ?>
+					<?php endif; ?>
 				</div>
 			<?php endif; ?>
-		<?php endif; ?>
+		<?php endif; ?>
 		
 		<?php
+
 	}
 	
 	//Generate Invoice with Ajax
@@ -218,15 +221,17 @@ class WC_Szamlazz {
 		$szamla = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><xmlszamla xmlns="http://www.szamlazz.hu/xmlszamla" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.szamlazz.hu/xmlszamla xmlszamla.xsd"></xmlszamla>');
 		
 		//If custom details
-		if(isset($_POST['note']) && isset($_POST['deadline'])) {
+		if(isset($_POST['note']) && isset($_POST['deadline']) && isset($_POST['completed'])) {
 			$note = $_POST['note'];
 			$deadline = $_POST['deadline'];
+			$complated_date = $_POST['completed'];
 		} else {
 			$note = get_option('wc_szamlazz_note');
-			$deadline = get_option('wc_szamlazz_payment_deadline');			
+			$deadline = get_option('wc_szamlazz_payment_deadline');		
+			$complated_date = date('Y-m-d');
 		}
-		
-		//Account & Invoice settings
+				
+		//Account & Invoice settings
 		$beallitasok = $szamla->addChild('beallitasok');
 		$beallitasok->addChild('felhasznalo', get_option('wc_szamlazz_username'));
 		$beallitasok->addChild('jelszo', get_option('wc_szamlazz_password'));
@@ -240,7 +245,7 @@ class WC_Szamlazz {
 		//Invoice details
 		$fejlec = $szamla->addChild('fejlec');
 		$fejlec->addChild('keltDatum', date('Y-m-d') );
-		$fejlec->addChild('teljesitesDatum', date('Y-m-d') );
+		$fejlec->addChild('teljesitesDatum', $complated_date );
 		if($deadline) {
 			$fejlec->addChild('fizetesiHataridoDatum', date('Y-m-d', strtotime('+'.$deadline.' days')));
 		} else {
@@ -250,7 +255,12 @@ class WC_Szamlazz {
 		$fejlec->addChild('penznem',$order->get_order_currency());
 		$fejlec->addChild('szamlaNyelve', 'hu');
 		$fejlec->addChild('megjegyzes', $note);
-		$fejlec->addChild('rendelesSzam', $orderId);
+		if($order->get_order_currency() != 'HUF') {
+			//if the base currency is not HUF, we should define currency rates
+			$fejlec->addChild('arfolyamBank', '');
+			$fejlec->addChild('arfolyam', 0);
+		}
+		$fejlec->addChild('rendelesSzam', $order->get_order_number());
 		$fejlec->addChild('elolegszamla', 'false');
 		$fejlec->addChild('vegszamla', 'false');
 		
@@ -282,29 +292,29 @@ class WC_Szamlazz {
 			$tetel->addChild('megnevezes',$termek["name"]);
 			$tetel->addChild('mennyiseg',$termek["qty"]);
 			$tetel->addChild('mennyisegiEgyseg','');
-			$tetel->addChild('nettoEgysegar',round($termek["line_total"])/$termek["qty"]);
-			$tetel->addChild('afakulcs',round((round($termek["line_tax"])/round($termek["line_total"]))*100));
-			$tetel->addChild('nettoErtek',round($termek["line_total"]));
-			$tetel->addChild('afaErtek',round($termek["line_tax"]));
-			$tetel->addChild('bruttoErtek',round($termek["line_total"])+round($termek["line_tax"]));
+			$tetel->addChild('nettoEgysegar',round($termek["line_total"],2)/$termek["qty"]);
+			$tetel->addChild('afakulcs',round(($termek["line_tax"]/$termek["line_total"])*100));
+			$tetel->addChild('nettoErtek',round($termek["line_total"],2));
+			$tetel->addChild('afaErtek',round($termek["line_tax"],2));
+			$tetel->addChild('bruttoErtek',round($termek["line_total"],2)+round($termek["line_tax"],2));
 			$tetel->addChild('megjegyzes','');
 		}
 
 		//Shipping
 		if($order->get_shipping_methods()) {
 			$tetel = $tetelek->addChild('tetel');
-			$tetel->addChild('megnevezes','Szállítás');
+			$tetel->addChild('megnevezes', $order->get_shipping_method());
 			$tetel->addChild('mennyiseg','1');
 			$tetel->addChild('mennyisegiEgyseg','');
-			$tetel->addChild('nettoEgysegar',round($order->order_shipping));
+			$tetel->addChild('nettoEgysegar',round($order->order_shipping,2));
 			if($order->order_shipping == 0) {
 				$tetel->addChild('afakulcs','0');	
 			} else {
-				$tetel->addChild('afakulcs',round((round($order->order_shipping_tax)/round($order->order_shipping))*100));				
+				$tetel->addChild('afakulcs',round(($order->order_shipping_tax/$order->order_shipping)*100));				
 			}
-			$tetel->addChild('nettoErtek',round($order->order_shipping));
-			$tetel->addChild('afaErtek',round($order->order_shipping_tax));
-			$tetel->addChild('bruttoErtek',round($order->order_shipping)+round($order->order_shipping_tax));
+			$tetel->addChild('nettoErtek',round($order->order_shipping,2));
+			$tetel->addChild('afaErtek',round($order->order_shipping_tax,2));
+			$tetel->addChild('bruttoErtek',round($order->order_shipping,2)+round($order->order_shipping_tax,2));
 			$tetel->addChild('megjegyzes','');
 		}
 		
@@ -316,11 +326,11 @@ class WC_Szamlazz {
 				$tetel->addChild('megnevezes',$fee["name"]);
 				$tetel->addChild('mennyiseg',1);
 				$tetel->addChild('mennyisegiEgyseg','');
-				$tetel->addChild('nettoEgysegar',round($fee["line_total"]));
-				$tetel->addChild('afakulcs',round((round($fee["line_tax"])/round($fee["line_total"]))*100));
-				$tetel->addChild('nettoErtek',round($fee["line_total"]));
-				$tetel->addChild('afaErtek',round($fee["line_tax"]));
-				$tetel->addChild('bruttoErtek',round($fee["line_total"])+round($fee["line_tax"]));
+				$tetel->addChild('nettoEgysegar',round($fee["line_total"],2));
+				$tetel->addChild('afakulcs',round(($fee["line_tax"]/$fee["line_total"])*100));
+				$tetel->addChild('nettoErtek',round($fee["line_total"],2));
+				$tetel->addChild('afaErtek',round($fee["line_tax"],2));
+				$tetel->addChild('bruttoErtek',round($fee["line_total"],2)+round($fee["line_tax"],2));
 				$tetel->addChild('megjegyzes','');
 			}			
 		}
@@ -340,9 +350,9 @@ class WC_Szamlazz {
 		}
 
 		//Generate XML
-		$xml_szamla = apply_filters('wc_szamlazz_xml',$szamla);
+		$xml_szamla = apply_filters('wc_szamlazz_xml',$szamla,$order);
 		$xml = $xml_szamla->asXML();
-		
+
 		//Temporarily save XML
 		$UploadDir = wp_upload_dir();
 		$UploadURL = $UploadDir['basedir'];
@@ -380,7 +390,11 @@ class WC_Szamlazz {
 			
 		// Beállítjuk, hol van az XML, amiből számlát szeretnénk csinálni (= file upload)
 		// az xmlfile-t itt fullpath-al kell megadni
-		curl_setopt($ch, CURLOPT_POSTFIELDS, array('action-xmlagentxmlfile'=>'@' . $xmlfile)); 
+		if (!class_exists('CurlFile')) {
+			curl_setopt($ch, CURLOPT_POSTFIELDS, array('action-xmlagentxmlfile'=>'@' . $xmlfile)); 
+		} else {
+			curl_setopt($ch, CURLOPT_POSTFIELDS, array('action-xmlagentxmlfile'=>new CurlFile($xmlfile))); 			
+		}
 			
 		// 30 másodpercig tartjuk fenn a kapcsolatot (ha valami bökkenő volna)
 		curl_setopt($ch, CURLOPT_TIMEOUT, 30);
@@ -459,6 +473,10 @@ class WC_Szamlazz {
 		//Delete the XML if not debug mode
 		if(!get_option('wc_szamlazz_debug')) {
 			unlink($xmlfile);
+		} else {
+			//Rename XML file for security
+			$random_file_name = substr(md5(rand()),5);
+			rename($xmlfile, $location.'/'.$orderId.'-'.$random_file_name.'.xml');
 		}
 			
 		if ($volt_hiba) {

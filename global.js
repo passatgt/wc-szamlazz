@@ -10,13 +10,15 @@ jQuery(document).ready(function($) {
         var button = $('#wc-szamlazz-generate-button');
         var note = $('#wc_szamlazz_invoice_note').val();
         var deadline = $('#wc_szamlazz_invoice_deadline').val();
+        var completed = $('#wc_szamlazz_invoice_completed').val();
         
         var data = {
             action: 'wc_szamlazz_generate_invoice',
             nonce: nonce,
             order: order,
             note: note,
-            deadline: deadline
+            deadline: deadline,
+            completed: completed
         };
 
 		button.block({message: null, overlayCSS: {background: '#fff url(' + wc_szamlazz_params.loading + ') no-repeat center', backgroundSize: '16px 16px', opacity: 0.6}});

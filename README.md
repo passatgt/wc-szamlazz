@@ -5,6 +5,17 @@ Számlázz.hu összeköttetés WooCommerce-hez.
 
 -----------------------
 Changelog:
+* v1.0.12
+	* Kerekítés javítása
+	* PHP Notice hiba javítása
+	* Szállítás helyett a szállítási mód nevét írja ki
+	* Teljesítés dátuma kézzel megadható manuális számlageneráláskor
+	* Ha nem forint a pénznem, akkor az árfolyam és a bank mezőket berakja a generált XML-be. Fontos, hogy itt a wc_szamlazz_xml filterrel meg kell adni az árfolyamot.
+	* wc_szamlazz_xml filter kiegészítve a rendelés adataival
+	* Rendelésszám nem a bejegyzés ID-je, így egyedi rendelési szám is átadható(pl sequential order number bővítmény működni fog)
+	* Curl kompatibilitás frissítése
+	* XML fájl random fájlnevet kap, hogy kívülről ne lehessen elérni
+	* Egyéb apróbb javítgatások a kódban 
 * v1.0.6 - Extra költségek megjelenítése a számlán(WooCommerce add_fee funckió)
 * v1.0.5 - Papíralapú számlakészítés javítva
 * v1.0.4 - Termékár számítás javítva kuponok alkalmazása esetén, wc_szamlazz_xml nevű filterrel módosítható az xml fájl generálás előtt és egy opció, hogy ne törölje le az XML fájlt számlakészítéskor, így könnyebben lehet tesztelni, ha valami gond van.
