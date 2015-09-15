@@ -4,7 +4,7 @@ Plugin Name: WooCommerce Szamlazz.hu
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.12
+Version: 1.0.13
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
@@ -49,7 +49,7 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.12'; 
+		self::$version = '1.0.13'; 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
 
@@ -289,7 +289,7 @@ class WC_Szamlazz {
 		$tetelek = $szamla->addChild('tetelek');
 		foreach( $order_items as $termek ) {  
 			$tetel = $tetelek->addChild('tetel');
-			$tetel->addChild('megnevezes',$termek["name"]);
+			$tetel->addChild('megnevezes',htmlspecialchars($termek["name"]));
 			$tetel->addChild('mennyiseg',$termek["qty"]);
 			$tetel->addChild('mennyisegiEgyseg','');
 			$tetel->addChild('nettoEgysegar',round($termek["line_total"],2)/$termek["qty"]);
@@ -303,7 +303,7 @@ class WC_Szamlazz {
 		//Shipping
 		if($order->get_shipping_methods()) {
 			$tetel = $tetelek->addChild('tetel');
-			$tetel->addChild('megnevezes', $order->get_shipping_method());
+			$tetel->addChild('megnevezes', htmlspecialchars($order->get_shipping_method()));
 			$tetel->addChild('mennyiseg','1');
 			$tetel->addChild('mennyisegiEgyseg','');
 			$tetel->addChild('nettoEgysegar',round($order->order_shipping,2));
@@ -323,7 +323,7 @@ class WC_Szamlazz {
 		if(!empty($fees)) {
 			foreach( $fees as $fee ) {  
 				$tetel = $tetelek->addChild('tetel');
-				$tetel->addChild('megnevezes',$fee["name"]);
+				$tetel->addChild('megnevezes',htmlspecialchars($fee["name"]));
 				$tetel->addChild('mennyiseg',1);
 				$tetel->addChild('mennyisegiEgyseg','');
 				$tetel->addChild('nettoEgysegar',round($fee["line_total"],2));

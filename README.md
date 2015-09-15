@@ -5,6 +5,7 @@ Számlázz.hu összeköttetés WooCommerce-hez.
 
 -----------------------
 Changelog:
+* v1.0.13 - Lehet speciális karakter a terméknévben
 * v1.0.12
 	* Kerekítés javítása
 	* PHP Notice hiba javítása
