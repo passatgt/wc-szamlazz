@@ -5,6 +5,7 @@ Számlázz.hu összeköttetés WooCommerce-hez.
 
 -----------------------
 Changelog:
+* v1.0.14 - Cikkszám feltüntetése a számlán(WooCommerce termék SKU-ja. Számlázz.hu-n be kell kapcsolni a Termék azonosító megjelenítése a számlán opciót.)
 * v1.0.13 - Lehet speciális karakter a terméknévben
 * v1.0.12
 	* Kerekítés javítása
