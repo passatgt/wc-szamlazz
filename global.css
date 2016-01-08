@@ -34,7 +34,8 @@
 	margin: 0 0 5px 0;
 }
 
-#wc_szamlazz_options_form input {
+#wc_szamlazz_options_form input[type="number"],
+#wc_szamlazz_options_form input[type="text"] {
 	width: 100%;
 	margin: 0 0 5px 0;
 }

@@ -1,10 +1,10 @@
 <?php 
 /*
-Plugin Name: WooCommerce Szamlazz.hu
+Plugin Name: Integration for Szamlazz.hu & WooCommerce
 Plugin URI: http://visztpeter.me
 Description: Számlázz.hu összeköttetés WooCommercehez
 Author: Viszt Péter
-Version: 1.0.14
+Version: 1.1
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
@@ -49,7 +49,7 @@ class WC_Szamlazz {
 		self::$plugin_basename = plugin_basename(__FILE__);
 		self::$plugin_url = plugin_dir_url(self::$plugin_basename);
 		self::$plugin_path = trailingslashit(dirname(__FILE__));
-		self::$version = '1.0.14'; 
+		self::$version = '1.1'; 
 
 		add_action( 'admin_init', array( $this, 'wc_szamlazz_admin_init' ) );
 
@@ -66,6 +66,7 @@ class WC_Szamlazz {
         add_action( 'wp_ajax_nopriv_wc_szamlazz_already_back', array( $this, 'wc_szamlazz_already_back' ) );
 
 		add_action( 'woocommerce_order_status_completed', array( $this, 'on_order_complete' ) );
+		add_action( 'woocommerce_order_status_processing', array( $this, 'on_order_processing' ) );
 
 		add_action( 'woocommerce_admin_order_actions_end', array( $this, 'add_listing_actions' ) );
 		
@@ -130,7 +131,14 @@ class WC_Szamlazz {
 			'title'    => __( 'Automata számlakészítés', 'wc-szamlazz' ),
 			'id'       => 'wc_szamlazz_auto',
 			'type'     => 'checkbox',
-			'desc'     => __( 'Ha be van kapcsolva, akkor a rendelés lezárásakor automatán kiállításra kerül a számla és a szamlazz.hu elküldi a vásárló emailcímére.', 'wc-szamlazz' ),
+			'desc'     => __( 'Ha be van kapcsolva, akkor a rendelés lezárásakor automatán kiállításra kerül a számla és a szamlazz.hu elküldi a vásárló email címére.', 'wc-szamlazz' ),
+		);
+
+		$settings[] = array(
+			'title'    => __( 'Díjbekérő létrehozása', 'wc-szamlazz' ),
+			'id'       => 'wc_szamlazz_payment_request_auto',
+			'type'     => 'checkbox',
+			'desc'     => __( 'Ha be van kapcsolva, akkor ha a rendelés függőben lévő státuszra vált, automatán kiállításra kerül egy díjbekérő és a szamlazz.hu elküldi a vásárló email címére', 'wc-szamlazz' ),
 		);
 
 		$settings[] = array(
@@ -168,7 +176,12 @@ class WC_Szamlazz {
 					<a id="wc_szamlazz_already_back" href="#" data-nonce="<?php echo wp_create_nonce( "wc_already_invoice" ); ?>" data-order="<?php echo $post->ID; ?>"><?php _e('Visszakapcsolás','wc-szamlazz'); ?></a>
 					</p>
 				</div>	
-			<?php endif; ?>	
+			<?php endif; ?>
+			<?php if(get_post_meta($post->ID,'_wc_szamlazz_dijbekero_pdf',true)): ?>
+			<p>Díjbekérő <span class="alignright"><?php echo get_post_meta($post->ID,'_wc_szamlazz_dijbekero',true); ?> - <a href="<?php echo $this->generate_download_link($post->ID,true); ?>">Letöltés</a></span></p>
+			<hr/>
+			<?php endif; ?>
+			
 			<?php if($this->is_invoice_generated($post->ID) && !get_post_meta($post->ID,'_wc_szamlazz_own',true)): ?>
 				<div style="text-align:center;">
 					<p><?php echo __('Számla sikeresen létrehozva és elküldve a vásárlónak emailben.','wc-szamlazz'); ?></p>
@@ -186,6 +199,8 @@ class WC_Szamlazz {
 						<input type="text" id="wc_szamlazz_invoice_deadline" value="<?php echo get_option('wc_szamlazz_payment_deadline'); ?>" />
 						<h4><?php _e('Teljesítés dátum','wc-szamlazz'); ?></h4>
 						<input type="text" class="date-picker" id="wc_szamlazz_invoice_completed" maxlength="10" value="<?php echo date('Y-m-d'); ?>" pattern="[0-9]{4}-(0[1-9]|1[012])-(0[1-9]|1[0-9]|2[0-9]|3[01])">
+						<h4><?php _e('Díjbekérő számla','wc-szamlazz'); ?></h4>
+						<input type="checkbox" id="wc_szamlazz_invoice_request" value="1" />
 						</div>
 						<a id="wc_szamlazz_already" href="#" data-nonce="<?php echo wp_create_nonce( "wc_already_invoice" ); ?>" data-order="<?php echo $post->ID; ?>"><?php _e('Számlakészítés kikapcsolása','wc-szamlazz'); ?></a>
 					</div>
@@ -212,7 +227,7 @@ class WC_Szamlazz {
 	}
 
 	//Generate XML for Szamla Agent
-	public function generate_invoice($orderId) {
+	public function generate_invoice($orderId,$payment_request = false) {
 		global $wpdb, $woocommerce;
 		$order = new WC_Order($orderId);
 		$order_items = $order->get_items();
@@ -263,6 +278,18 @@ class WC_Szamlazz {
 		$fejlec->addChild('rendelesSzam', $order->get_order_number());
 		$fejlec->addChild('elolegszamla', 'false');
 		$fejlec->addChild('vegszamla', 'false');
+
+		//Díjbekérő
+		if($payment_request) {
+			$fejlec->addChild('dijbekero', 'true');
+		} else {
+			if(isset($_POST['request']) && $_POST['request'] == 'on') {
+				$fejlec->addChild('dijbekero', 'true');
+				$payment_request = true;
+			} else {
+				$fejlec->addChild('dijbekero', 'false');
+			}			
+		}
 		
 		//Seller details
 		$elado = $szamla->addChild('elado');
@@ -496,7 +523,7 @@ class WC_Szamlazz {
 			$response['messages'][] = 'Agent válasz: '.urldecode($agent_body);
 
 			//Update order notes
-			$order->add_order_note( __( 'Szamlazz.hu számlakészítás sikertelen! Agent hibakód: ', 'wc-szamlazz' ).$agent_error_code );
+			$order->add_order_note( __( 'Szamlazz.hu számlakészítés sikertelen! Agent hibakód: ', 'wc-szamlazz' ).$agent_error_code );
 			
 			// dobunk egy kivételt
 			return $response;
@@ -511,26 +538,43 @@ class WC_Szamlazz {
 					break;
 				} 
 			}
-			
-			//Build response array
-			$response['messages'][] = __('Számla sikeresen létrehozva és elküldve a vásárlónak emailben.','wc-szamlazz');
-			$response['invoice_name'] = $szlahu_szamlaszam;
-			
-			//Store as a custom field
-			update_post_meta( $orderId, '_wc_szamlazz', $szlahu_szamlaszam );
-			
-			//Update order notes
-			$order->add_order_note( __( 'Szamlazz.hu számla sikeresen létrehozva. A számla sorszáma: ', 'wc-szamlazz' ).$szlahu_szamlaszam );
-			
+
 			//Download & Store PDF - generate a random file name so it will be downloadable later only by you
 			$random_file_name = substr(md5(rand()),5);
 			$pdf_file_name = 'szamla_'.$random_file_name.'_'.$orderId.'.pdf';
 			$pdf_file = $location.'/'.$pdf_file_name;
 			file_put_contents($pdf_file, $agent_body); 
 			
-			//Store the filename
-			update_post_meta( $orderId, '_wc_szamlazz_pdf', $pdf_file_name );
+			//Create response
+			$response['invoice_name'] = $szlahu_szamlaszam;
 			
+			//Save data
+			if($payment_request) {
+				$response['messages'][] = __('Díjbekérő sikeresen létrehozva és elküldve a vásárlónak emailben.','wc-szamlazz');
+				
+				//Store as a custom field
+				update_post_meta( $orderId, '_wc_szamlazz_dijbekero', $szlahu_szamlaszam );
+
+				//Update order notes
+				$order->add_order_note( __( 'Szamlazz.hu díjbekérő sikeresen létrehozva. A számla sorszáma: ', 'wc-szamlazz' ).$szlahu_szamlaszam );
+
+				//Store the filename
+				update_post_meta( $orderId, '_wc_szamlazz_dijbekero_pdf', $pdf_file_name );
+
+			} else {
+				$response['messages'][] = __('Számla sikeresen létrehozva és elküldve a vásárlónak emailben.','wc-szamlazz');	
+				
+				//Store as a custom field
+				update_post_meta( $orderId, '_wc_szamlazz', $szlahu_szamlaszam );	
+
+				//Update order notes
+				$order->add_order_note( __( 'Szamlazz.hu számla sikeresen létrehozva. A számla sorszáma: ', 'wc-szamlazz' ).$szlahu_szamlaszam );
+
+				//Store the filename
+				update_post_meta( $orderId, '_wc_szamlazz_pdf', $pdf_file_name );
+
+			}
+
 			//Return the download url
 			$response['link'] = '<p><a href="'.$this->generate_download_link($orderId).'" id="wc_szamlazz_download" class="button button-primary" target="_blank">'.__('Számla megtekintése','wc-szamlazz').'</a></p>';
 
@@ -546,6 +590,18 @@ class WC_Szamlazz {
 		if(get_option('wc_szamlazz_auto') == 'yes') {
 			if(!$this->is_invoice_generated($order_id)) {				
 				$return_info = $this->generate_invoice($order_id);	
+			}			
+		}
+		
+	}
+
+	//Autogenerate invoice
+	public function on_order_processing( $order_id ) {
+	
+		//Only generate invoice, if it wasn't already generated & only if automatic invoice is enabled
+		if(get_option('wc_szamlazz_payment_request_auto') == 'yes') {
+			if(!$this->is_invoice_generated($order_id)) {				
+				$return_info = $this->generate_invoice($order_id,true);	
 			}			
 		}
 		
@@ -571,12 +627,24 @@ class WC_Szamlazz {
 			</a>
 		<?php
 		endif;
+		
+		if(get_post_meta($order->id,'_wc_szamlazz_dijbekero_pdf',true)):
+		?>
+			<a href="<?php echo $this->generate_download_link($order->id,true); ?>" class="button tips wc_szamlazz" target="_blank" alt="" data-tip="<?php _e('Szamlazz.hu díjbekérő','wc-szamlazz'); ?>">
+				<img src="<?php echo WC_Szamlazz::$plugin_url . 'images/payment_request.png'; ?>" alt="" width="16" height="16">
+			</a>
+		<?php
+		endif;
 	}
 	
 	//Generate download url
-	public function generate_download_link( $order_id ) {
+	public function generate_download_link( $order_id, $payment_request = false ) {
 		if($order_id) {
-			$pdf_name = get_post_meta($order_id,'_wc_szamlazz_pdf',true);
+			if($payment_request) {
+				$pdf_name = get_post_meta($order_id,'_wc_szamlazz_dijbekero_pdf',true);
+			} else {
+				$pdf_name = get_post_meta($order_id,'_wc_szamlazz_pdf',true);
+			}
 			$UploadDir = wp_upload_dir();
 			$UploadURL = $UploadDir['baseurl'];
 			$pdf_file_url = $UploadURL.'/wc_szamlazz/'.$pdf_name;
@@ -601,7 +669,7 @@ class WC_Szamlazz {
 	public function wc_szamlazz_already() {
         check_ajax_referer( 'wc_already_invoice', 'nonce' );
         if( true ) {
-			if ( !current_user_can( 'edit_shop_order' ) )  {
+			if ( !current_user_can( 'edit_shop_orders' ) )  {
 				wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
 			}			
         	$orderid = $_POST['order'];
@@ -622,7 +690,7 @@ class WC_Szamlazz {
 	public function wc_szamlazz_already_back() {
         check_ajax_referer( 'wc_already_invoice', 'nonce' );
         if( true ) {
-			if ( !current_user_can( 'edit_shop_order' ) )  {
+			if ( !current_user_can( 'edit_shop_orders' ) )  {
 				wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
 			}			
         	$orderid = $_POST['order'];

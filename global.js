@@ -11,6 +11,12 @@ jQuery(document).ready(function($) {
         var note = $('#wc_szamlazz_invoice_note').val();
         var deadline = $('#wc_szamlazz_invoice_deadline').val();
         var completed = $('#wc_szamlazz_invoice_completed').val();
+        var request = $('#wc_szamlazz_invoice_request').is(':checked'); 
+         if(request) {
+	        request = 'on';
+        } else {
+	        request = 'off';
+        }
         
         var data = {
             action: 'wc_szamlazz_generate_invoice',
@@ -18,7 +24,8 @@ jQuery(document).ready(function($) {
             order: order,
             note: note,
             deadline: deadline,
-            completed: completed
+            completed: completed,
+            request: request
         };
 
 		button.block({message: null, overlayCSS: {background: '#fff url(' + wc_szamlazz_params.loading + ') no-repeat center', backgroundSize: '16px 16px', opacity: 0.6}});
