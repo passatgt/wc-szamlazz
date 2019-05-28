@@ -1,6 +1,11 @@
 WooCommerce Szamlazz.hu
 ===========
 
+# A bővítmény legfrissebb verziója elérhető a wordpress.org-on és a fejlesztést az ott lévő SVN repo-n keresztül lehet követni:
+
+https://wordpress.org/plugins/integration-for-szamlazzhu-woocommerce/
+https://plugins.trac.wordpress.org/browser/integration-for-szamlazzhu-woocommerce/
+
 Számlázz.hu összeköttetés WooCommerce-hez.
 
 -----------------------
